@@ -81,24 +81,33 @@ def order_tokens(tokens: List[str]) -> List[str]:
 
     print("Choose your categories (separated by spaces):")
     for key in categories.keys():
-        tids: str = ""
-        vals: List[int] = []
+        keywords: str = ""
+        keyword_list: List[str] = []
         try:
             while True:
-                tids = input(f"{key}? ")
-                if not tids:
+                keywords = input(f"{key}? ")
+                if not keywords:
                     break
-                if " " not in tids:
-                    if int(tids) == 0:
-                        print("Invalid token number, try again")
-                        continue
-                    vals = [tokens[int(tids) - 1]]
+                if " " not in keywords:
+                    if type(keywords) is int:
+                        if int(keywords) == 0:
+                            print("Invalid token number, try again")
+                            continue
+                        keyword_list = [tokens[int(keywords) - 1]]
+                    elif type(keywords) is str:
+                        keyword_list = [keywords]
                 else:
-                    vals = [tokens[int(tid) - 1] for tid in tids.split()]
-                    if -1 in vals:
-                        print("Invalid token number, try again")
-                        continue
-                categories[key].extend(vals)
+                    split_keywords = keywords.split()
+                    for keyword in split_keywords:
+                        try:
+                            keyword = int(keyword) - 1
+                            if keyword == -1:
+                                print("Invalid token number, try again")
+                                continue
+                            keyword_list.append(tokens[keyword])
+                        except ValueError:
+                            keyword_list.append(keyword)
+                categories[key].extend(keyword_list)
                 break
         except ValueError:
             print("Not a list of numbers, try again")
