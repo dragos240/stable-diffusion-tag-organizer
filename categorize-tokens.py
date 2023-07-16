@@ -76,48 +76,55 @@ def order_tokens(tokens: List[str]) -> List[str]:
         "footers": []
     }
 
+    tokens.sort()
+
     for idx, token in enumerate(tokens):
         print(idx + 1, token)
 
-    print("Choose your categories (separated by spaces):")
+    answer = input("Tokens sorted, categorize? (Y/n): ")
+    if answer.rstrip().lower() not in ("y", ""):
+        return tokens
+
+    print("Categorize your tokens (separated by commas):")
     for key in categories.keys():
         keywords: str = ""
         keyword_list: List[str] = []
-        try:
-            while True:
+        while True:
+            try:
                 keywords = input(f"{key}? ")
                 if not keywords:
-                    break
-                if " " not in keywords:
-                    if type(keywords) is int:
-                        if int(keywords) == 0:
+                    raise Exception()
+            except (EOFError, Exception):
+                break
+            if " " not in keywords:
+                if type(keywords) is int:
+                    if keywords == 0:
+                        print("Invalid token number, try again")
+                        continue
+                    keyword_list = [tokens[int(keywords) - 1]]
+                elif type(keywords) is str:
+                    keyword_list = [keywords]
+            else:
+                split_keywords = keywords.split()
+                for keyword in split_keywords:
+                    try:
+                        keyword = int(keyword) - 1
+                        if keyword == -1:
                             print("Invalid token number, try again")
                             continue
-                        keyword_list = [tokens[int(keywords) - 1]]
-                    elif type(keywords) is str:
-                        keyword_list = [keywords]
-                else:
-                    split_keywords = keywords.split()
-                    for keyword in split_keywords:
-                        try:
-                            keyword = int(keyword) - 1
-                            if keyword == -1:
-                                print("Invalid token number, try again")
-                                continue
-                            keyword_list.append(tokens[keyword])
-                        except ValueError:
-                            keyword_list.append(keyword)
-                categories[key].extend(keyword_list)
-                break
-        except ValueError:
-            print("Not a list of numbers, try again")
+                        keyword_list.append(tokens[keyword])
+                    except ValueError:
+                        keyword_list.append(keyword)
+            categories[key].extend(keyword_list)
+            break
 
     ordered_tokens = []
     for k, v in categories.items():
         # Skip categories that have no tokens
         if not categories[k]:
             continue
-        # Extend the ordered_tokens list with the tokens in the current category
+        # Extend the ordered_tokens list with the tokens in the current
+        # category
         ordered_tokens.extend(v)
 
     return ordered_tokens
@@ -130,17 +137,23 @@ def main():
 
     output_path = sys.argv[1]
 
-    print("(Use Ctrl+C or Ctrl+D to quit)")
+    print("(Use Ctrl+C to quit at any time)")
     while True:
         try:
-            prompt = input("(prompt): ")
-            tokens = split_tokens(prompt)
+            prompt = ""
+            tokens = []
+            try:
+                prompt = input("(prompt): ").rstrip()
+                tokens = split_tokens(prompt)
+            except EOFError:
+                # Assume user means skip prompt input
+                pass
             tokens = order_tokens(tokens)
 
             with open(output_path, 'w') as f:
                 print(type(tokens))
                 f.write(", ".join(tokens))
-        except (KeyboardInterrupt, EOFError):
+        except KeyboardInterrupt:
             break
 
 
