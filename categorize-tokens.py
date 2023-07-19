@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional, Set
+import readline
 
 
 def split_tokens(prompt: str) -> List[str]:
@@ -40,7 +41,9 @@ def split_tokens(prompt: str) -> List[str]:
         elif c == "]":
             bracket_depth -= 1
 
-        if paren_depth == 0 and bracket_depth == 0 and c == ",":
+        if paren_depth == 0 \
+                and bracket_depth == 0 \
+                and c == ",":
             # If we are not within any parentheses or square brackets and
             # encounter a comma, add the current token to the list
             tokens.append(current_token.strip())
@@ -54,14 +57,29 @@ def split_tokens(prompt: str) -> List[str]:
     return tokens
 
 
-def order_tokens(tokens: List[str]) -> List[str]:
-    """Order tokens by category into a single List
+def print_token_list(tokens: Set[str]):
+    for idx, token in enumerate(tokens):
+        print(f"{idx + 1}. {token}")
+
+
+def remove_dups(tokens: List[str]):
+    pruned_tokens = []
+
+    for token in pruned_tokens:
+        if token not in pruned_tokens:
+            pruned_tokens.append(token)
+
+    return pruned_tokens
+
+
+def categorize_tokens(tokens: List[str]) -> List[str]:
+    """Categorize tokens by category into a List
 
     Args:
         tokens (List[str]): Tokens
 
     Returns:
-        List[str]: Ordered tokens
+        List[str]: Categorized tokens
     """
     categories: Dict[str, List[str]] = {
         "headers": [],
@@ -76,58 +94,84 @@ def order_tokens(tokens: List[str]) -> List[str]:
         "footers": []
     }
 
-    tokens.sort()
-
-    for idx, token in enumerate(tokens):
-        print(idx + 1, token)
-
-    answer = input("Tokens sorted, categorize? (Y/n): ")
-    if answer.rstrip().lower() not in ("y", ""):
-        return tokens
-
     print("Categorize your tokens (separated by commas):")
     for key in categories.keys():
         keywords: str = ""
         keyword_list: List[str] = []
-        while True:
-            try:
-                keywords = input(f"{key}? ")
-                if not keywords:
-                    raise Exception()
-            except (EOFError, Exception):
-                break
-            if " " not in keywords:
-                if type(keywords) is int:
-                    if keywords == 0:
-                        print("Invalid token number, try again")
-                        continue
-                    keyword_list = [tokens[int(keywords) - 1]]
-                elif type(keywords) is str:
-                    keyword_list = [keywords]
-            else:
-                split_keywords = keywords.split()
-                for keyword in split_keywords:
-                    try:
-                        keyword = int(keyword) - 1
-                        if keyword == -1:
-                            print("Invalid token number, try again")
-                            continue
-                        keyword_list.append(tokens[keyword])
-                    except ValueError:
-                        keyword_list.append(keyword)
-            categories[key].extend(keyword_list)
-            break
 
-    ordered_tokens = []
-    for k, v in categories.items():
-        # Skip categories that have no tokens
-        if not categories[k]:
+        try:
+            keywords = input(f"{key}? ")
+            if not keywords:
+                raise EOFError()
+        except (EOFError, KeyboardInterrupt):
             continue
+
+        # Assume by default there's only one token
+        keyword_list = {keywords}
+        # If there's a comma, multiple tokens were specified
+        if "," in keywords:
+            # Split the keywords and remove duplicates
+            keyword_list = remove_dups(split_tokens(keywords))
+        categories[key].extend(keyword_list)
+
+    categorized_tokens = []
+    values: List[str]
+    for values in categories.items():
         # Extend the ordered_tokens list with the tokens in the current
         # category
-        ordered_tokens.extend(v)
+        categorized_tokens.extend(values)
 
-    return ordered_tokens
+    return categorized_tokens
+
+
+class TagCompleter(object):
+    tags: List[str]
+    matches: List[str]
+
+    def __init__(self, tags: List[str]):
+        self.tags = tags
+
+    def complete(self, text: str, state: int):
+        tokens = [token.rstrip()
+                  for token in text.split(",")]
+        last_token = tokens[-1]
+
+        if state == 0:
+            if not text:
+                # If tab is hit with an empty text buffer
+                self.matches = self.tags
+            else:
+                self.matches = [tag
+                                for tag in self.tags
+                                if tag.startswith(last_token)]
+
+        try:
+            return self.matches[state]
+        except IndexError:
+            return None
+
+    def display_matches(self,
+                        substitution: str,
+                        matches: List[str],
+                        longest_match_length: int):
+        line_buffer = readline.get_line_buffer()
+
+        print()
+
+        for match in matches:
+            print(match)
+
+        print(f"> {line_buffer}", end="")
+        sys.stdout.flush()
+
+
+def set_completer(tokens: List[str]):
+    completer = TagCompleter(tokens)
+    readline.set_completer_delims(',')
+    readline.set_completer(completer.complete)
+    readline.parse_and_bind('tab: complete')
+    readline.set_completion_display_matches_hook(
+        completer.display_matches)
 
 
 def main():
@@ -145,13 +189,25 @@ def main():
             try:
                 prompt = input("(prompt): ").rstrip()
                 tokens = split_tokens(prompt)
+
             except EOFError:
                 # Assume user means skip prompt input
                 pass
-            tokens = order_tokens(tokens)
+
+            # Sort the tokens before printing them
+            tokens.sort()
+
+            # Print tokens
+            print_token_list(tokens)
+
+            # Set up autocomplete
+            set_completer(tokens)
+
+            answer = input("Tokens sorted, categorize? (Y/n): ")
+            if answer.rstrip().lower() in ("y", ""):
+                tokens = categorize_tokens(tokens)
 
             with open(output_path, 'w') as f:
-                print(type(tokens))
                 f.write(", ".join(tokens))
         except KeyboardInterrupt:
             break
