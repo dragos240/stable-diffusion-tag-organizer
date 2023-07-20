@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import sys
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 import readline
+import argparse
+import os
 
 
 def split_tokens(prompt: str) -> List[str]:
@@ -22,6 +24,10 @@ def split_tokens(prompt: str) -> List[str]:
         >>> separate_tokens(prompt)
         ['Zootopia', 'solo (((nick wilde))) with ((neck tuft))']
     """
+
+    # Flatten prompt
+    prompt.replace("\n", "")
+
     # Stored tokens
     tokens = []
     # Current token being processed
@@ -57,16 +63,33 @@ def split_tokens(prompt: str) -> List[str]:
     return tokens
 
 
-def print_token_list(tokens: Set[str]):
+def print_token_list(tokens: List[str]):
+    """Prints given tokens, numbering them as it does
+
+    Args:
+        tokens (List[str]): Tokens to print
+    """
     for idx, token in enumerate(tokens):
         print(f"{idx + 1}. {token}")
 
 
-def remove_dups(tokens: List[str]):
+def remove_dups(tokens: List[str]) -> List[str]:
+    """Remove duplicate tokens if they exist
+
+    Args:
+        tokens (List[str]): Tokens to parse
+
+    Returns:
+        List[str]: Pruned tokens
+    """
+    ALLOWED_KEYWORDS = [
+        "BREAK"
+    ]
     pruned_tokens = []
 
-    for token in pruned_tokens:
-        if token not in pruned_tokens:
+    for token in tokens:
+        if token not in pruned_tokens \
+                or token in ALLOWED_KEYWORDS:
             pruned_tokens.append(token)
 
     return pruned_tokens
@@ -95,31 +118,30 @@ def categorize_tokens(tokens: List[str]) -> List[str]:
     }
 
     print("Categorize your tokens (separated by commas):")
-    for key in categories.keys():
-        keywords: str = ""
-        keyword_list: List[str] = []
+    for category in categories.keys():
+        tokens_input: str = ""
+        section_tokens: List[str] = []
 
         try:
-            keywords = input(f"{key}? ")
-            if not keywords:
+            tokens_input = input(f"{category}? ")
+            if not tokens_input:
                 raise EOFError()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
             continue
+        except KeyboardInterrupt:
+            break
 
-        # Assume by default there's only one token
-        keyword_list = {keywords}
         # If there's a comma, multiple tokens were specified
-        if "," in keywords:
+        # Else, there must be a single token
+        if "," in tokens_input:
             # Split the keywords and remove duplicates
-            keyword_list = remove_dups(split_tokens(keywords))
-        categories[key].extend(keyword_list)
+            section_tokens.extend(remove_dups(split_tokens(tokens_input)))
+        else:
+            section_tokens.append(tokens_input)
 
-    categorized_tokens = []
-    values: List[str]
-    for values in categories.items():
-        # Extend the ordered_tokens list with the tokens in the current
-        # category
-        categorized_tokens.extend(values)
+    categorized_tokens = tokens.copy()
+    for vals in categories.values():
+        categorized_tokens.extend(vals)
 
     return categorized_tokens
 
@@ -175,21 +197,30 @@ def set_completer(tokens: List[str]):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Syntax: PATH/TO/OUTPUT/FILE")
-        return
+    parser = argparse.ArgumentParser(
+        description="Tool for managing tags for Stable Diffusion prompts")
 
-    output_path = sys.argv[1]
+    parser.add_argument("output_file",
+                        help="Output file for tags",
+                        type=str,
+                        metavar="FILE")
 
+    args = parser.parse_args()
+
+    output_path = args.output_file
+
+    prompt: Optional[str] = None
+    if os.path.exists("./prompt.txt"):
+        with open("./prompt.txt", "r") as f:
+            prompt = "".join(f.readlines())
     print("(Use Ctrl+C to quit at any time)")
     while True:
         try:
-            prompt = ""
             tokens = []
             try:
-                prompt = input("(prompt): ").rstrip()
+                if prompt is None:
+                    prompt = input("(prompt): ").rstrip()
                 tokens = split_tokens(prompt)
-
             except EOFError:
                 # Assume user means skip prompt input
                 pass
