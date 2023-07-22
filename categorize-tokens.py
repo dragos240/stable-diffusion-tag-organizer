@@ -24,10 +24,6 @@ def split_tokens(prompt: str) -> List[str]:
         >>> separate_tokens(prompt)
         ['Zootopia', 'solo (((nick wilde))) with ((neck tuft))']
     """
-
-    # Flatten prompt
-    prompt.replace("\n", "")
-
     # Stored tokens
     tokens = []
     # Current token being processed
@@ -147,53 +143,50 @@ def categorize_tokens(tokens: List[str]) -> List[str]:
 
 
 class TagCompleter(object):
-    tags: List[str]
+    tokens: List[str]
     matches: List[str]
 
-    def __init__(self, tags: List[str]):
-        self.tags = tags
+    def __init__(self, tokens: List[str]):
+        readline.clear_history()
+        self.tokens = tokens
 
     def complete(self, text: str, state: int):
-        tokens = [token.rstrip()
-                  for token in text.split(",")]
-        last_token = tokens[-1]
+        """Completion function for TagCompleter
 
-        if state == 0:
-            if not text:
-                # If tab is hit with an empty text buffer
-                self.matches = self.tags
-            else:
-                self.matches = [tag
-                                for tag in self.tags
-                                if tag.startswith(last_token)]
+        Args:
+            text (str): The text of the input
+            state (int): The index of the suggestion
+
+        Returns:
+            str: The completed text for the given state
+        """
+        # Make sure the text is stripped since a user may enter a space
+        # after the delimiter
+        text = text.strip()
+
+        # In case tab is hit with an empty text buffer, use all tokens
+        self.matches = self.tokens
+        if text:
+            # Check if the input text is inside any given token
+            self.matches = [token
+                            for token in self.tokens
+                            if text in token]
+
+        match: Optional[str] = None
 
         try:
-            return self.matches[state]
+            match = self.matches[state]
         except IndexError:
-            return None
+            pass
 
-    def display_matches(self,
-                        substitution: str,
-                        matches: List[str],
-                        longest_match_length: int):
-        line_buffer = readline.get_line_buffer()
-
-        print()
-
-        for match in matches:
-            print(match)
-
-        print(f"> {line_buffer}", end="")
-        sys.stdout.flush()
+        return match
 
 
-def set_completer(tokens: List[str]):
+def init_completer(tokens: List[str]):
     completer = TagCompleter(tokens)
     readline.set_completer_delims(',')
     readline.set_completer(completer.complete)
     readline.parse_and_bind('tab: complete')
-    readline.set_completion_display_matches_hook(
-        completer.display_matches)
 
 
 def main():
@@ -209,39 +202,40 @@ def main():
 
     output_path = args.output_file
 
+    # Use the text inside of prompt.txt if it exists in the current dir
     prompt: Optional[str] = None
     if os.path.exists("./prompt.txt"):
         with open("./prompt.txt", "r") as f:
             prompt = "".join(f.readlines())
+
     print("(Use Ctrl+C to quit at any time)")
-    while True:
+    try:
+        tokens = []
         try:
-            tokens = []
-            try:
-                if prompt is None:
-                    prompt = input("(prompt): ").rstrip()
-                tokens = split_tokens(prompt)
-            except EOFError:
-                # Assume user means skip prompt input
-                pass
+            if prompt is None:
+                prompt = input("(prompt): ").rstrip()
+            tokens = split_tokens(prompt)
+        except EOFError:
+            # Assume user means skip prompt input
+            pass
 
-            # Sort the tokens before printing them
-            tokens.sort()
+        # Sort the tokens before printing them
+        tokens.sort()
 
-            # Print tokens
-            print_token_list(tokens)
+        # Print tokens
+        print_token_list(tokens)
 
-            # Set up autocomplete
-            set_completer(tokens)
+        # Set up autocomplete
+        init_completer(tokens)
 
-            answer = input("Tokens sorted, categorize? (Y/n): ")
-            if answer.rstrip().lower() in ("y", ""):
-                tokens = categorize_tokens(tokens)
+        answer = input("Tokens sorted, categorize? (Y/n): ")
+        if answer.rstrip().lower() in ("y", ""):
+            tokens = categorize_tokens(tokens)
 
-            with open(output_path, 'w') as f:
-                f.write(", ".join(tokens))
-        except KeyboardInterrupt:
-            break
+        with open(output_path, 'w') as f:
+            f.write(", ".join(tokens))
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':
