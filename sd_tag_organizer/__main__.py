@@ -26,7 +26,7 @@ def main():
         with open("./prompt.txt", "r") as f:
             prompt = "".join(f.readlines())
 
-    print("(Use Ctrl+C to quit at any time)")
+    print("(Use Ctrl+C to quit, Tab to autocomplete)")
     try:
         tokens = []
         try:
@@ -58,6 +58,6 @@ def main():
             pass
 
         with open(output_path, 'w') as f:
-            f.write(", ".join(tokens))
+            f.write(", ".join(tokens).lstrip())
     except KeyboardInterrupt:
         pass

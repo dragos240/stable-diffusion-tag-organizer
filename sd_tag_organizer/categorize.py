@@ -57,6 +57,8 @@ def categorize_tokens(prompt_tokens: List[str],
         elif len(tokens_str) != 0:
             category_tokens.append(tokens_str)
 
+        category_tokens[-1] = "\n" + category_tokens[-1]
+
         completer.remove_tokens(category_tokens)
 
         final_tokens.extend(category_tokens)
