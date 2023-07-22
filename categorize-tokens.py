@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
-import sys
 from typing import Dict, List, Optional
 import readline
 import argparse
 import os
+
+DEFAULT_CATEGORIES = [
+    "headers",
+    "artist",
+    "style",
+    "subject",
+    "subject_pose",
+    "subject_other",
+    "scene",
+    "view",
+    "lighting",
+    "footers"
+]
 
 
 def split_tokens(prompt: str) -> List[str]:
@@ -100,17 +112,10 @@ def categorize_tokens(tokens: List[str]) -> List[str]:
     Returns:
         List[str]: Categorized tokens
     """
+    # TODO: Let user specify their own categories?
     categories: Dict[str, List[str]] = {
-        "headers": [],
-        "artist": [],
-        "style": [],
-        "subject": [],
-        "subject_pose": [],
-        "subject_other": [],
-        "scene": [],
-        "view": [],
-        "lighting": [],
-        "footers": []
+        category: []
+        for category in DEFAULT_CATEGORIES
     }
 
     print("Categorize your tokens (separated by commas):")
@@ -160,6 +165,8 @@ class TagCompleter(object):
         Returns:
             str: The completed text for the given state
         """
+        # TODO Remove suggestion if it's already in a category
+
         # Make sure the text is stripped since a user may enter a space
         # after the delimiter
         text = text.strip()
@@ -219,11 +226,15 @@ def main():
             # Assume user means skip prompt input
             pass
 
-        # Sort the tokens before printing them
-        tokens.sort()
+        # New list for listed tokens, to preserve original order
+        listed_tokens = tokens.copy()
+
+        # Sort the listed tokens so that it's easier to comb through
+        # specified tokens
+        listed_tokens.sort()
 
         # Print tokens
-        print_token_list(tokens)
+        print_token_list(listed_tokens)
 
         # Set up autocomplete
         init_completer(tokens)
