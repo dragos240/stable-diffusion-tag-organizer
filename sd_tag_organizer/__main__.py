@@ -16,9 +16,22 @@ def main():
                         type=str,
                         metavar="FILE")
 
+    parser.add_argument("-c", "--categories",
+                        help="A file containing a list of categories to use",
+                        type=str,
+                        metavar="PATH",
+                        default=None,
+                        dest="category_path")
+
     args = parser.parse_args()
 
     output_path = args.output_file
+    categories: Optional[str] = []
+    if args.category_path is not None:
+        if os.path.exists(args.category_path):
+            print("Using categories from user defined list")
+            with open(args.category_path, 'r') as f:
+                categories = [line.rstrip() for line in f.readlines()]
 
     # Use the text inside of prompt.txt if it exists in the current dir
     prompt: Optional[str] = None
@@ -53,7 +66,7 @@ def main():
         try:
             answer = input("Tokens sorted, categorize? (Y/n): ")
             if answer.rstrip().lower() in ("y", ""):
-                tokens = categorize_tokens(tokens, completer)
+                tokens = categorize_tokens(tokens, completer, categories)
         except KeyboardInterrupt:
             pass
 

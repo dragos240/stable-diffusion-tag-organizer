@@ -5,20 +5,16 @@ from .completer import TagCompleter
 
 DEFAULT_CATEGORIES = [
     "headers",
-    "artist",
     "style",
     "subject",
-    "subject_pose",
-    "subject_other",
-    "scene",
-    "view",
-    "lighting",
+    "pov",
     "footers"
 ]
 
 
 def categorize_tokens(prompt_tokens: List[str],
-                      completer: TagCompleter) -> List[str]:
+                      completer: TagCompleter,
+                      category_list: List[str]) -> List[str]:
     """Handle categorization of tokens
 
     This function takes user input per category, adds it to a final list of
@@ -30,8 +26,9 @@ def categorize_tokens(prompt_tokens: List[str],
     Returns:
         List[str]: Categorized tokens
     """
-    # TODO: Let user specify their own categories?
     categories: List[str] = DEFAULT_CATEGORIES.copy()
+    if category_list:
+        categories = category_list
     final_tokens: List[str] = []
 
     print("Categorize your tokens (separated by commas):")
